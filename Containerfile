@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY handler.py .
 COPY templates/ templates/
+COPY static/ static/
 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser
 USER appuser
