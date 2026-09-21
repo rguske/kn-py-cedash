@@ -93,16 +93,51 @@
             font-size: 0.85rem;
             margin: 0;
         }
+        .cedash-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: var(--pf-t--global--spacer--sm) 0 var(--pf-t--global--spacer--xs) 0;
+        }
+        .cedash-event-data + .cedash-section-header {
+            margin-top: var(--pf-t--global--spacer--md);
+        }
         .cedash-section-label {
             color: var(--cedash-purple-light);
             font-size: 0.8rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin: var(--pf-t--global--spacer--sm) 0 var(--pf-t--global--spacer--xs) 0;
+            margin: 0;
         }
-        .cedash-event-data + .cedash-section-label {
-            margin-top: var(--pf-t--global--spacer--md);
+        .cedash-copy-btn {
+            background: rgba(111, 45, 168, 0.15);
+            color: var(--cedash-purple-light);
+            border: 1px solid var(--cedash-purple);
+            border-radius: var(--pf-t--global--border--radius--small);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.4;
+            padding: 2px 10px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .cedash-copy-btn:hover {
+            background: var(--cedash-purple);
+            color: #ffffff;
+        }
+        .cedash-copy-btn:active {
+            background: var(--cedash-purple-dark);
+        }
+        .cedash-copy-btn--done {
+            background: rgba(76, 175, 80, 0.25) !important;
+            border-color: #4caf50 !important;
+            color: #8ee6a1 !important;
+        }
+        .cedash-copy-btn--failed {
+            background: rgba(220, 53, 69, 0.25) !important;
+            border-color: #dc3545 !important;
+            color: #f5a3ab !important;
         }
     </style>
 </head>
@@ -158,12 +193,67 @@
                 '<div class="cedash-event-meta">' +
                 '<span><strong>received:</strong> ' + escapeHtml(evt.received_at || '') + '</span>' +
                 '</div>' +
+                '<div class="cedash-section-header">' +
                 '<p class="cedash-section-label">Attributes</p>' +
+                '<button type="button" class="cedash-copy-btn" onclick="copyJsonBlock(this)">Copy</button>' +
+                '</div>' +
                 '<pre class="cedash-event-data">' + escapeHtml(attrsJson) + '</pre>' +
+                '<div class="cedash-section-header">' +
                 '<p class="cedash-section-label">Data</p>' +
+                '<button type="button" class="cedash-copy-btn" onclick="copyJsonBlock(this)">Copy</button>' +
+                '</div>' +
                 '<pre class="cedash-event-data">' + escapeHtml(dataJson) + '</pre>' +
                 '</div>'
             );
+        }
+
+        async function copyJsonBlock(button) {
+            const header = button.closest('.cedash-section-header');
+            const pre = header ? header.nextElementSibling : null;
+            const text = pre ? pre.textContent : '';
+            const originalLabel = button.textContent;
+            const resetAfter = (label, cssClass) => {
+                button.textContent = label;
+                button.classList.remove('cedash-copy-btn--done', 'cedash-copy-btn--failed');
+                if (cssClass) {
+                    button.classList.add(cssClass);
+                }
+                setTimeout(() => {
+                    button.textContent = originalLabel;
+                    button.classList.remove('cedash-copy-btn--done', 'cedash-copy-btn--failed');
+                }, 1500);
+            };
+
+            const copyWithExecCommand = () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (!ok) {
+                    throw new Error('execCommand copy returned false');
+                }
+            };
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                    } catch (clipboardErr) {
+                        console.warn('navigator.clipboard.writeText failed, falling back', clipboardErr);
+                        copyWithExecCommand();
+                    }
+                } else {
+                    copyWithExecCommand();
+                }
+                resetAfter('Copied!', 'cedash-copy-btn--done');
+            } catch (err) {
+                console.error('Failed to copy to clipboard', err);
+                resetAfter('Failed', 'cedash-copy-btn--failed');
+            }
         }
 
         async function refresh() {
