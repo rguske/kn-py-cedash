@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ display_name }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@6/patternfly.min.css">
+    <style>
+        :root {
+            --cedash-purple: #6f2da8;
+            --cedash-purple-dark: #4a1d73;
+            --cedash-purple-light: #a06cd5;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            min-height: 100vh;
+            font-size: 16px;
+        }
+        .pf-v6-l-bullseye {
+            min-height: 100vh;
+            padding: var(--pf-t--global--spacer--lg);
+        }
+        .cedash-card {
+            max-width: 900px;
+            width: 100%;
+        }
+        .pf-v6-c-card.cedash-card {
+            --pf-v6-c-card--BackgroundColor: rgba(30, 30, 30, 0.95);
+            border: 2px solid var(--cedash-purple);
+            box-shadow: 0 0 40px rgba(111, 45, 168, 0.35);
+        }
+        .cedash-header {
+            text-align: center;
+            padding: var(--pf-t--global--spacer--xl) 0;
+            background: linear-gradient(180deg, rgba(111, 45, 168, 0.15) 0%, transparent 100%);
+            border-radius: var(--pf-t--global--border--radius--medium) var(--pf-t--global--border--radius--medium) 0 0;
+        }
+        .cedash-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            text-shadow: 0 0 20px rgba(111, 45, 168, 0.6);
+        }
+        .cedash-subtitle {
+            color: #cccccc;
+            font-size: 1rem;
+            margin-top: var(--pf-t--global--spacer--sm);
+        }
+        .pf-v6-c-card__body {
+            color: #e0e0e0;
+        }
+        .cedash-event-card {
+            background: rgba(111, 45, 168, 0.08);
+            border-left: 3px solid var(--cedash-purple);
+            border-radius: var(--pf-t--global--border--radius--medium);
+            padding: var(--pf-t--global--spacer--md);
+            margin-bottom: var(--pf-t--global--spacer--md);
+        }
+        .cedash-event-card h3 {
+            color: var(--cedash-purple-light) !important;
+            font-size: 1.1rem;
+            margin: 0 0 var(--pf-t--global--spacer--xs) 0;
+        }
+        .cedash-event-meta {
+            color: #aaaaaa;
+            font-size: 0.85rem;
+            margin-bottom: var(--pf-t--global--spacer--sm);
+        }
+        .cedash-event-meta span {
+            margin-right: var(--pf-t--global--spacer--md);
+        }
+        .cedash-event-data {
+            background: rgba(0, 0, 0, 0.35);
+            color: #e0e0e0;
+            padding: var(--pf-t--global--spacer--sm);
+            border-radius: var(--pf-t--global--border--radius--small);
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="pf-v6-l-bullseye">
+        <div class="pf-v6-c-card cedash-card">
+            <div class="cedash-header">
+                <h1 class="cedash-title">{{ display_name }}</h1>
+                <p class="cedash-subtitle">Live CloudEvents dashboard</p>
+            </div>
+            <div class="pf-v6-c-card__body">
+                <div id="events-list">
+                    <div class="pf-v6-c-empty-state">
+                        <div class="pf-v6-c-empty-state__content">
+                            <p class="pf-v6-c-empty-state__body">Waiting for CloudEvents&hellip;</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pf-v6-c-card__footer" style="text-align:center; color:#888; font-size:0.85rem;">
+                <p>Showing up to 50 most recent events &middot; refreshes every 2.5s</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderEmptyState() {
+            return (
+                '<div class="pf-v6-c-empty-state">' +
+                '<div class="pf-v6-c-empty-state__content">' +
+                '<p class="pf-v6-c-empty-state__body">Waiting for CloudEvents&hellip;</p>' +
+                '</div>' +
+                '</div>'
+            );
+        }
+
+        function renderEvent(evt) {
+            const attrs = evt.attributes || {};
+            const dataJson = JSON.stringify(evt.data, null, 2);
+            return (
+                '<div class="cedash-event-card">' +
+                '<h3>' + escapeHtml(attrs.type || 'unknown type') + '</h3>' +
+                '<div class="cedash-event-meta">' +
+                '<span><strong>id:</strong> ' + escapeHtml(attrs.id || '') + '</span>' +
+                '<span><strong>source:</strong> ' + escapeHtml(attrs.source || '') + '</span>' +
+                '<span><strong>received:</strong> ' + escapeHtml(evt.received_at || '') + '</span>' +
+                '</div>' +
+                '<pre class="cedash-event-data">' + escapeHtml(dataJson) + '</pre>' +
+                '</div>'
+            );
+        }
+
+        async function refresh() {
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                const container = document.getElementById('events-list');
+                container.innerHTML = events.length === 0
+                    ? renderEmptyState()
+                    : events.map(renderEvent).join('');
+            } catch (err) {
+                console.error('Failed to refresh events', err);
+            }
+        }
+
+        refresh();
+        setInterval(refresh, 2500);
+    </script>
+</body>
+</html>
