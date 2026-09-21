@@ -1,4 +1,3 @@
-oc create -f - <<EOF
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -28,4 +27,3 @@ spec:
       apiVersion: serving.knative.dev/v1
       kind: Service
       name: kn-py-cedash-fn
-EOF
