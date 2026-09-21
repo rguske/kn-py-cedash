@@ -2,7 +2,7 @@ oc create -f - <<EOF
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: kn-py-echo-fn
+  name: kn-py-cedash-fn
 spec:
   template:
     metadata:
@@ -11,14 +11,14 @@ spec:
         autoscaling.knative.dev/minScale: "1"
     spec:
       containers:
-        - image: quay.io/rguske/py-echo-function:1.0
+        - image: quay.io/rguske/kn-py-cedash:1.0
 ---
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
   labels:
     eventing.knative.dev/broker: inmem-broker-transformer
-  name: trigger-py-echo-fn
+  name: trigger-py-cedash-fn
 spec:
   broker: inmem-broker-transformer
   filter:
@@ -27,5 +27,5 @@ spec:
     ref:
       apiVersion: serving.knative.dev/v1
       kind: Service
-      name: kn-py-echo-fn
+      name: kn-py-cedash-fn
 EOF
