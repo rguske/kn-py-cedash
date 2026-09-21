@@ -11,7 +11,7 @@ purple theme), refreshing automatically as new events arrive.
 [Buildpacks](https://buildpacks.io) are used to create the container image.
 
 ```shell
-IMAGE=<docker-username>/<repo>/kn-py-cedash:1.0
+IMAGE=<podman-username>/<repo>/kn-py-cedash:1.0
 pack build -B gcr.io/buildpacks/builder:v1 ${IMAGE}
 ```
 
@@ -23,6 +23,32 @@ included `Containerfile` using [Podman](https://podman.io):
 ```shell
 IMAGE=<registry>/<repo>/kn-py-cedash:1.0
 podman build -t ${IMAGE} -f Containerfile .
+```
+
+## Step 1 (alternative) - Build a multi-arch image with Podman
+
+If the image needs to run on nodes with different CPU architectures (e.g.
+`amd64` and `arm64` in the same cluster), build a multi-arch manifest list
+instead of a single-platform image. On macOS, `podman machine` ships with
+the QEMU emulation needed to build for architectures other than the host's,
+so this works out of the box — no extra setup required.
+
+```shell
+IMAGE=<registry>/<repo>/kn-py-cedash:1.0
+podman manifest create ${IMAGE}
+podman build --platform=linux/amd64,linux/arm64 --manifest ${IMAGE} -f Containerfile .
+```
+
+Push the whole manifest list (both architectures) to the registry:
+
+```shell
+podman manifest push --all ${IMAGE} docker://${IMAGE}
+```
+
+Verify the pushed manifest references both architectures:
+
+```shell
+podman manifest inspect ${IMAGE}
 ```
 
 ## Step 2 - Test
@@ -49,23 +75,53 @@ the new event within ~3 seconds without a manual reload.
 
 ## Step 3 - Deploy
 
-> **Note:** The following steps assume a working Knative environment using
-the `default` Rabbit `broker`. The Knative `service` and `trigger` will be
-installed in the `vmware-functions` Kubernetes namespace, assuming that the
+> **Note:** The following steps assume a working Knative environment. The Knative `service` and `trigger` will be
+installed in the Kubernetes namespace of your choice, assuming that the
 `broker` is also available there.
 
 Push your container image to an accessible registry once you're done
 developing and testing your function logic.
 
 ```shell
-docker push <docker-username>/<repo>/kn-py-cedash:1.0
+podman push <username>/<repo>/kn-py-cedash:1.0
 ```
 
-Edit the `function.yaml` file with the name of the container image from
-Step 1 if you made any changes. Deploy the function:
+> If you built a multi-arch manifest list instead (Step 1 alternative
+> above), push it with `podman manifest push --all` as shown there, rather
+> than `podman push`.
 
-```shell
-kubectl -n vmware-functions apply -f function.yaml
+```yaml
+oc create -f - <<EOF
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kn-py-cedash-fn
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "1"
+        autoscaling.knative.dev/minScale: "1"
+    spec:
+      containers:
+        - image: quay.io/rguske/kn-py-cedash:1.0
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  labels:
+    eventing.knative.dev/broker: broker-apiserversource
+  name: trigger-py-cedash-fn
+spec:
+  broker: broker-apiserversource
+  filter:
+    attributes: {}
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kn-py-cedash-fn
+EOF
 ```
 
 For testing purposes, the `function.yaml` contains the following
@@ -81,7 +137,6 @@ annotations:
 
 ## Step 4 - Undeploy
 
-```console
-# undeploy function
-kubectl -n vmware-functions delete -f function.yaml
+```shell
+oc delete -f function.yaml
 ```
