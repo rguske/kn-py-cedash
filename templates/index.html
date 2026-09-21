@@ -11,29 +11,40 @@
             --cedash-purple-dark: #4a1d73;
             --cedash-purple-light: #a06cd5;
         }
-        body {
+        html {
+            height: 100%;
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+        }
+        body {
+            margin: 0;
             min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
             font-size: 16px;
         }
         .pf-v6-l-bullseye {
-            min-height: 100vh;
+            height: 100vh;
             padding: var(--pf-t--global--spacer--lg);
+            box-sizing: border-box;
         }
         .cedash-card {
             max-width: 900px;
             width: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         .pf-v6-c-card.cedash-card {
             --pf-v6-c-card--BackgroundColor: rgba(30, 30, 30, 0.95);
             border: 2px solid var(--cedash-purple);
             box-shadow: 0 0 40px rgba(111, 45, 168, 0.35);
+            overflow: hidden;
         }
         .cedash-header {
             text-align: center;
             padding: var(--pf-t--global--spacer--xl) 0;
             background: linear-gradient(180deg, rgba(111, 45, 168, 0.15) 0%, transparent 100%);
             border-radius: var(--pf-t--global--border--radius--medium) var(--pf-t--global--border--radius--medium) 0 0;
+            flex-shrink: 0;
         }
         .cedash-title {
             font-size: 2.25rem;
@@ -49,6 +60,9 @@
         }
         .pf-v6-c-card__body {
             color: #e0e0e0;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
         }
         .cedash-event-card {
             background: rgba(111, 45, 168, 0.08);
@@ -108,7 +122,7 @@
                     </div>
                 </div>
             </div>
-            <div class="pf-v6-c-card__footer" style="text-align:center; color:#888; font-size:0.85rem;">
+            <div class="pf-v6-c-card__footer" style="text-align:center; color:#888; font-size:0.85rem; flex-shrink:0;">
                 <p>Showing up to 50 most recent events &middot; refreshes every 2.5s</p>
             </div>
         </div>
@@ -157,9 +171,14 @@
                 const res = await fetch('/api/events');
                 const events = await res.json();
                 const container = document.getElementById('events-list');
+                const scrollRegion = container.parentElement;
+                const previousScrollTop = scrollRegion ? scrollRegion.scrollTop : 0;
                 container.innerHTML = events.length === 0
                     ? renderEmptyState()
                     : events.map(renderEvent).join('');
+                if (scrollRegion) {
+                    scrollRegion.scrollTop = previousScrollTop;
+                }
             } catch (err) {
                 console.error('Failed to refresh events', err);
             }
