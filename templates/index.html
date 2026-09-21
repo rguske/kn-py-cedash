@@ -79,6 +79,17 @@
             font-size: 0.85rem;
             margin: 0;
         }
+        .cedash-section-label {
+            color: var(--cedash-purple-light);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: var(--pf-t--global--spacer--sm) 0 var(--pf-t--global--spacer--xs) 0;
+        }
+        .cedash-event-data + .cedash-section-label {
+            margin-top: var(--pf-t--global--spacer--md);
+        }
     </style>
 </head>
 <body>
@@ -125,15 +136,17 @@
 
         function renderEvent(evt) {
             const attrs = evt.attributes || {};
+            const attrsJson = JSON.stringify(attrs, null, 2);
             const dataJson = JSON.stringify(evt.data, null, 2);
             return (
                 '<div class="cedash-event-card">' +
                 '<h3>' + escapeHtml(attrs.type || 'unknown type') + '</h3>' +
                 '<div class="cedash-event-meta">' +
-                '<span><strong>id:</strong> ' + escapeHtml(attrs.id || '') + '</span>' +
-                '<span><strong>source:</strong> ' + escapeHtml(attrs.source || '') + '</span>' +
                 '<span><strong>received:</strong> ' + escapeHtml(evt.received_at || '') + '</span>' +
                 '</div>' +
+                '<p class="cedash-section-label">Attributes</p>' +
+                '<pre class="cedash-event-data">' + escapeHtml(attrsJson) + '</pre>' +
+                '<p class="cedash-section-label">Data</p>' +
                 '<pre class="cedash-event-data">' + escapeHtml(dataJson) + '</pre>' +
                 '</div>'
             );
