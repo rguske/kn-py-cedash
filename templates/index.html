@@ -208,26 +208,60 @@
             );
         }
 
+        // CloudEvents spec v1.0 core context attributes. Everything else found
+        // on an event's attribute set is a CloudEvent *extension* attribute
+        // (e.g. Knative's "kind"/"name"/"namespace"/"network"/"storageclass").
+        const CORE_ATTR_KEYS = ['specversion', 'type', 'source', 'subject', 'id', 'time', 'datacontenttype', 'dataschema'];
+
+        function splitAttributes(attrs) {
+            const context = {};
+            const extensions = {};
+            Object.keys(attrs).forEach((key) => {
+                if (CORE_ATTR_KEYS.includes(key)) {
+                    context[key] = attrs[key];
+                } else {
+                    extensions[key] = attrs[key];
+                }
+            });
+            return { context, extensions };
+        }
+
+        function renderJsonSection(label, obj) {
+            const json = JSON.stringify(obj, null, 2);
+            return (
+                '<div class="cedash-section-header">' +
+                '<p class="cedash-section-label">' + escapeHtml(label) + '</p>' +
+                '<button type="button" class="cedash-copy-btn" onclick="copyJsonBlock(this)">Copy</button>' +
+                '</div>' +
+                '<pre class="cedash-event-data">' + escapeHtml(json) + '</pre>'
+            );
+        }
+
         function renderEvent(evt) {
             const attrs = evt.attributes || {};
-            const attrsJson = JSON.stringify(attrs, null, 2);
-            const dataJson = JSON.stringify(evt.data, null, 2);
+            const { context, extensions } = splitAttributes(attrs);
+            const hasExtensions = Object.keys(extensions).length > 0;
+            // Skip the Data section entirely when there is no payload (e.g. a
+            // CloudEvent that only carries context attributes/extensions),
+            // matching how reference viewers like Sockeye omit an empty Data
+            // block instead of showing a misleading "null".
+            const hasData = evt.data !== null && evt.data !== undefined;
+
+            let sections = renderJsonSection('Context Attributes', context);
+            if (hasExtensions) {
+                sections += renderJsonSection('Extensions', extensions);
+            }
+            if (hasData) {
+                sections += renderJsonSection('Data', evt.data);
+            }
+
             return (
                 '<div class="cedash-event-card">' +
                 '<h3>' + escapeHtml(attrs.type || 'unknown type') + '</h3>' +
                 '<div class="cedash-event-meta">' +
                 '<span><strong>received:</strong> ' + escapeHtml(evt.received_at || '') + '</span>' +
                 '</div>' +
-                '<div class="cedash-section-header">' +
-                '<p class="cedash-section-label">Attributes</p>' +
-                '<button type="button" class="cedash-copy-btn" onclick="copyJsonBlock(this)">Copy</button>' +
-                '</div>' +
-                '<pre class="cedash-event-data">' + escapeHtml(attrsJson) + '</pre>' +
-                '<div class="cedash-section-header">' +
-                '<p class="cedash-section-label">Data</p>' +
-                '<button type="button" class="cedash-copy-btn" onclick="copyJsonBlock(this)">Copy</button>' +
-                '</div>' +
-                '<pre class="cedash-event-data">' + escapeHtml(dataJson) + '</pre>' +
+                sections +
                 '</div>'
             );
         }
