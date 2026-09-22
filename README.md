@@ -6,6 +6,8 @@ decodes and logs incoming [CloudEvents](https://github.com/cloudevents/sdk-pytho
 `GET /` showing the most recently received CloudEvents (PatternFly 6 UI,
 purple theme), refreshing automatically as new events arrive.
 
+![example-picture](static/kn-py-cedash-1.png)
+
 ## Step 1 - Build with `Buildpacks`
 
 [Buildpacks](https://buildpacks.io) are used to create the container image.
